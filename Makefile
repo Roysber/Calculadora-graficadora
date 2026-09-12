@@ -1,22 +1,23 @@
-# Variables de compilación
+# Variables de compilacion
 CXX = g++
 CXXFLAGS = -Wall -std=c++17
+LIBS = -lsfml-graphics -lsfml-window -lsfml-system
 TARGET = calculadora.exe
 SRC = main.cpp
 
-# Regla principal (se ejecuta por defecto con 'make')
+# Regla principal
 all: $(TARGET)
 
-# Compilación del ejecutable
+# Compilacion del ejecutable
 $(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET)
+	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET) $(LIBS)
 
-# Regla para compilar y ejecutar de una vez
+# Regla para ejecutar
 run: $(TARGET)
 	./$(TARGET)
 
-# Regla para limpiar los ejecutables generados
+# Regla para limpiar los ejecutables
 clean:
-	rm -f $(TARGET) app.exe prueba.exe *.o
+	rm -f $(TARGET)
 
 .PHONY: all run clean
