@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <sstream>
 #include <cmath>
 
 // Estructura para representar un botón de la calculadora
@@ -12,44 +13,50 @@ struct Boton {
     std::string valor;
 };
 
-// Función para procesar las operaciones
-double calcular(double a, double b, char op) {
-    switch (op) {
-        case '+': return a + b;
-        case '-': return a - b;
-        case '*': return a * b;
-        case '/': return (b != 0) ? (a / b) : 0;
-        default: return 0;
+// Función para evaluar expresiones simples encadenadas (ej. "3+3+3+3")
+double evaluarExpresion(const std::string& expr) {
+    std::stringstream ss(expr);
+    double acumulado = 0;
+    double numero = 0;
+    char op = '+';
+
+    while (ss >> numero) {
+        switch (op) {
+            case '+': acumulado += numero; break;
+            case '-': acumulado -= numero; break;
+            case '*': acumulado *= numero; break;
+            case '/': acumulado = (numero != 0) ? (acumulado / numero) : 0; break;
+        }
+        ss >> op; // Leer el siguiente operador
     }
+    return acumulado;
 }
 
 int main() {
-    // 1. Crear ventana (estilo móvil: 320x480)
+    // Ventana estilo teléfono (320x480)
     sf::RenderWindow window(sf::VideoMode({320, 480}), "Calculadora C++", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
 
-    // 2. Cargar fuente de texto
     sf::Font font;
     if (!font.openFromFile("arial.ttf")) {
         std::cout << "Error: No se pudo cargar arial.ttf.\n";
         return -1;
     }
 
-    // 3. Pantalla de la calculadora
+    // Pantalla de la calculadora
     sf::RectangleShape pantallaFondo(sf::Vector2f({300.f, 70.f}));
-    pantallaFondo.setFillColor(sf::Color(30, 30, 30));
+    pantallaFondo.setFillColor(sf::Color(0, 0, 0));
     pantallaFondo.setPosition({10.f, 10.f});
 
-    std::string entradaActual = "";
-    double primerNumero = 0;
-    char operacion = ' ';
-    bool nuevaEntrada = false;
+    std::string expresion = "";
+    std::string numeroActual = "";
+    bool expresionTerminada = false;
 
-    sf::Text textoDisplay(font, "0", 32);
+    sf::Text textoDisplay(font, "0", 28);
     textoDisplay.setFillColor(sf::Color::White);
     textoDisplay.setPosition({20.f, 25.f});
 
-    // 4. Diseñar la cuadrícula de botones
+    // Cuadrícula de botones
     std::vector<Boton> botones;
     std::vector<std::string> etiquetas = {
         "C", "/", "*", "-",
@@ -58,11 +65,8 @@ int main() {
         "1", "2", "3", "0"
     };
 
-    float ancho = 65.f;
-    float alto = 65.f;
-    float margenX = 10.f;
-    float margenY = 90.f;
-    float espacio = 10.f;
+    float ancho = 65.f, alto = 65.f;
+    float margenX = 10.f, margenY = 90.f, espacio = 10.f;
 
     for (size_t i = 0; i < etiquetas.size(); ++i) {
         int fila = i / 4;
@@ -74,9 +78,9 @@ int main() {
         if (etiquetas[i] == "C") {
             btn.forma.setFillColor(sf::Color(200, 50, 50));
         } else if (etiquetas[i] == "+" || etiquetas[i] == "-" || etiquetas[i] == "*" || etiquetas[i] == "/" || etiquetas[i] == "=") {
-            btn.forma.setFillColor(sf::Color(230, 140, 30));
+            btn.forma.setFillColor(sf::Color(21, 67, 96));
         } else {
-            btn.forma.setFillColor(sf::Color(60, 60, 60));
+            btn.forma.setFillColor(sf::Color(41, 128, 185));
         }
 
         sf::Vector2f pos = {margenX + col * (ancho + espacio), margenY + fila * (alto + espacio)};
@@ -93,7 +97,7 @@ int main() {
         botones.push_back(std::move(btn));
     }
 
-    // 5. Bucle de eventos
+    // Bucle principal
     while (window.isOpen()) {
         while (const auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
@@ -108,41 +112,56 @@ int main() {
                         if (btn.forma.getGlobalBounds().contains(mousePos)) {
                             std::string val = btn.valor;
 
+                            // Si se presiona un número (0-9)
                             if (val >= "0" && val <= "9") {
-                                if (nuevaEntrada) {
-                                    entradaActual = "";
-                                    nuevaEntrada = false;
+                                if (expresionTerminada) {
+                                    expresion = "";
+                                    numeroActual = "";
+                                    expresionTerminada = false;
                                 }
-                                // Límite estricto de máximo 5 cifras por entrada
-                                if (entradaActual.length() < 5) {
-                                    entradaActual += val;
+                                // Mantiene el límite de 5 cifras por cada número ingresado
+                                if (numeroActual.length() < 5) {
+                                    numeroActual += val;
+                                    expresion += val;
                                 }
-                            } else if (val == "C") {
-                                entradaActual = "";
-                                primerNumero = 0;
-                                operacion = ' ';
-                            } else if (val == "+" || val == "-" || val == "*" || val == "/") {
-                                if (!entradaActual.empty()) {
-                                    primerNumero = std::stod(entradaActual);
-                                    operacion = val[0];
-                                    entradaActual = "";
+                            } 
+                            // Si se presiona un operador (+, -, *, /)
+                            else if (val == "+" || val == "-" || val == "*" || val == "/") {
+                                if (!expresion.empty() && std::isdigit(expresion.back())) {
+                                    expresion += " " + val + " ";
+                                    numeroActual = ""; // Reiniciar conteo de 5 cifras para el nuevo número
+                                    expresionTerminada = false;
                                 }
-                            } else if (val == "=") {
-                                if (!entradaActual.empty() && operacion != ' ') {
-                                    double segundoNumero = std::stod(entradaActual);
-                                    double res = calcular(primerNumero, segundoNumero, operacion);
+                            } 
+                            // Botón de borrado (C)
+                            else if (val == "C") {
+                                expresion = "";
+                                numeroActual = "";
+                                expresionTerminada = false;
+                            } 
+                            // Botón Igual (=)
+                            else if (val == "=") {
+                                if (!expresion.empty() && std::isdigit(expresion.back())) {
+                                    double res = evaluarExpresion(expresion);
                                     
                                     std::string resStr = std::to_string(res);
                                     resStr.erase(resStr.find_last_not_of('0') + 1, std::string::npos);
                                     if (resStr.back() == '.') resStr.pop_back();
 
-                                    entradaActual = resStr;
-                                    operacion = ' ';
-                                    nuevaEntrada = true;
+                                    expresion = resStr;
+                                    numeroActual = resStr;
+                                    expresionTerminada = true;
                                 }
                             }
 
-                            textoDisplay.setString(entradaActual.empty() ? "0" : entradaActual);
+                            // Ajustar tamaño del texto si la expresión se vuelve muy larga en pantalla
+                            if (expresion.length() > 14) {
+                                textoDisplay.setCharacterSize(18);
+                            } else {
+                                textoDisplay.setCharacterSize(28);
+                            }
+
+                            textoDisplay.setString(expresion.empty() ? "0" : expresion);
                         }
                     }
                 }
@@ -150,7 +169,7 @@ int main() {
         }
 
         // Renderizado
-        window.clear(sf::Color(20, 20, 20));
+        window.clear(sf::Color(255, 255, 255));
         window.draw(pantallaFondo);
         window.draw(textoDisplay);
 
